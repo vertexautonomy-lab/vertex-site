@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Free Revenue Leak Audit — Vertex Autonomy</title>
+<meta name="description" content="We audit local business websites for the hidden issues that quietly send customers to your competitors. Free for High Desert businesses." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #060709;
+    --bg-elev: #0d0f13;
+    --bg-card: #11141a;
+    --line: #1f242d;
+    --text: #e8ebef;
+    --text-dim: #8a93a0;
+    --accent: #00e5ff;
+    --accent-dim: #007a8a;
+    --warn: #ff5c3c;
+    --good: #4ade80;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', system-ui, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+  }
+  main, header, footer { position: relative; z-index: 1; }
+
+  /* ===== Typography ===== */
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  h1, h2, h3 {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+  h1 { font-size: clamp(2.4rem, 5vw, 4.4rem); }
+  h2 { font-size: clamp(1.8rem, 3.5vw, 2.8rem); }
+  h3 { font-size: 1.1rem; font-weight: 700; }
+  p  { color: var(--text-dim); font-size: 1.05rem; }
+
+  .container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .eyebrow::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  /* ===== Header ===== */
+  header {
+    position: sticky;
+    top: 0;
+    background: rgba(6,7,9,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+    z-index: 100;
+  }
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    color: var(--text);
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--accent); }
+  .nav-phone {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s;
+  }
+  .nav-phone:hover { color: var(--accent); }
+  .nav-phone::before {
+    content: '◉';
+    color: var(--good);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ===== Buttons ===== */
+  .btn {
+    display: inline-block;
+    padding: 16px 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 30px rgba(0,229,255,0.25);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 0 1px var(--accent), 0 12px 40px rgba(0,229,255,0.4);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line);
+  }
+  .btn-ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ===== Hero ===== */
+  .hero {
+    padding: 100px 0 80px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 80px;
+    align-items: start;
+  }
+  .hero h1 { margin: 24px 0; }
+  .hero h1 .accent { color: var(--accent); }
+  .hero p.lede { font-size: 1.2rem; max-width: 540px; margin-bottom: 36px; }
+  .hero-stats {
+    display: flex;
+    gap: 32px;
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px dashed var(--line);
+  }
+  .stat-num { font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 800; color: var(--accent); }
+  .stat-lbl { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* ===== Form Card ===== */
+  .form-card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    padding: 32px;
+    position: relative;
+  }
+  .form-card::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px;
+    width: 40px; height: 40px;
+    border-top: 2px solid var(--accent);
+    border-left: 2px solid var(--accent);
+  }
+  .form-card::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 40px; height: 40px;
+    border-bottom: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+  }
+  .form-card h3 { margin-bottom: 8px; font-size: 1.3rem; }
+  .form-card .form-sub { font-size: 0.9rem; margin-bottom: 24px; }
+  .form-row { margin-bottom: 16px; }
+  .form-row label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+  .form-row input, .form-row textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 14px 16px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+  }
+  .form-row input:focus, .form-row textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .form-card button { width: 100%; margin-top: 8px; }
+  .form-card .small {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 14px;
+    text-align: center;
+  }
+  .form-success,
+  .form-error {
+    display: none;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+  }
+  .form-success {
+    background: rgba(74, 222, 128, 0.08);
+    border: 1px solid var(--good);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .form-success strong { color: var(--good); font-family: 'JetBrains Mono', monospace; }
+  .form-success-cta { display: block; margin-top: 6px; font-size: 0.85rem; color: var(--text-dim); }
+  .form-success a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .form-error {
+    background: rgba(255, 92, 60, 0.08);
+    border: 1px solid var(--warn);
+    color: var(--warn);
+  }
+  .field-error {
+    display: block;
+    color: var(--warn);
+    font-size: 0.75rem;
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+    min-height: 0;
+  }
+  .field-error:empty { display: none; }
+  input[aria-invalid="true"] { border-color: var(--warn) !important; }
+
+  /* ===== Sections ===== */
+  section { padding: 100px 0; border-bottom: 1px solid var(--line); }
+  .section-head { max-width: 720px; margin-bottom: 60px; }
+  .section-head h2 { margin: 16px 0; }
+
+  /* ===== Leaks Grid ===== */
+  .leaks {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+  .leak {
+    background: var(--bg);
+    padding: 36px 28px;
+    transition: background 0.2s;
+  }
+  .leak:hover { background: var(--bg-elev); }
+  .leak-num {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    margin-bottom: 16px;
+  }
+  .leak h3 { margin-bottom: 12px; font-family: 'Manrope', sans-serif; font-size: 1.15rem; font-weight: 700; }
+  .leak p { font-size: 0.95rem; margin-bottom: 20px; }
+  .leak-loss {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--warn);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    border-top: 1px dashed var(--line);
+    padding-top: 14px;
+    display: block;
+  }
+
+  /* ===== Process ===== */
+  .process { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .step {
+    border: 1px solid var(--line);
+    padding: 32px;
+    position: relative;
+  }
+  .step-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 20px;
+  }
+  .step h3 { font-family: 'Manrope', sans-serif; font-size: 1.2rem; margin-bottom: 12px; }
+  .step .step-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 16px;
+    display: block;
+  }
+
+  /* ===== About ===== */
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 80px;
+    align-items: center;
+  }
+  .about-photo {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 20px;
+    position: relative;
+  }
+  .about-photo::after {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border: 1px dashed var(--line);
+  }
+  .about p { margin-bottom: 20px; font-size: 1.05rem; }
+  .about p strong { color: var(--text); }
+
+  /* ===== Pricing ===== */
+  .pricing {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .price-card {
+    border: 1px solid var(--line);
+    padding: 40px 32px;
+    position: relative;
+  }
+  .price-card.featured {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, rgba(0,229,255,0.04) 0%, transparent 100%);
+  }
+  .price-card .badge {
+    position: absolute;
+    top: -12px;
+    right: 24px;
+    background: var(--accent);
+    color: var(--bg);
+    padding: 4px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .price-card h3 { font-family: 'Manrope', sans-serif; font-size: 1.3rem; margin-bottom: 8px; }
+  .price-amt {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 3.4rem;
+    font-weight: 800;
+    color: var(--text);
+    margin: 16px 0 4px;
+  }
+  .price-amt span { font-size: 1rem; color: var(--text-dim); font-weight: 500; }
+  .price-meta { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 28px; }
+  .price-card ul { list-style: none; margin-bottom: 32px; }
+  .price-card li {
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--line);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 0.95rem;
+    color: var(--text-dim);
+  }
+  .price-card li::before {
+    content: '+';
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+  }
+  .price-card .btn { width: 100%; text-align: center; }
+
+  /* ===== Final CTA ===== */
+  .final-cta {
+    text-align: center;
+    padding: 120px 0;
+  }
+  .final-cta h2 { margin: 16px auto; max-width: 720px; }
+  .final-cta p { max-width: 540px; margin: 0 auto 40px; font-size: 1.1rem; }
+
+  /* ===== Footer ===== */
+  footer {
+    background: var(--bg-elev);
+    padding: 60px 0 40px;
+    border-top: 1px solid var(--line);
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 60px;
+    margin-bottom: 48px;
+  }
+  footer h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  footer a {
+    color: var(--text);
+    text-decoration: none;
+    display: block;
+    padding: 4px 0;
+    font-size: 0.95rem;
+    transition: color 0.2s;
+  }
+  footer a:hover { color: var(--accent); }
+  .footer-bottom {
+    border-top: 1px solid var(--line);
+    padding-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 900px) {
+    .hero-grid, .about-grid { grid-template-columns: 1fr; gap: 40px; }
+    .leaks, .process, .pricing { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+    section { padding: 70px 0; }
+    .hero { padding: 60px 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="/" class="logo">VERTEX<span>//</span>AUTONOMY</a>
+    <a href="tel:+17605551234" class="nav-phone">(760) 555-1234</a>
+  </div>
+</header>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-grid">
+        <div>
+          <span class="eyebrow">Free for High Desert businesses</span>
+          <h1>Your website is <span class="accent">silently bleeding</span> customers right now.</h1>
+          <p class="lede">We run a 10-point diagnostic on your site, Google listing, and online presence. You get the full report. No cost. No pitch. You keep it either way.</p>
+          <a href="#audit" class="btn btn-primary">Request Free Audit →</a>
+
+          <div class="hero-stats">
+            <div>
+              <div class="stat-num">10</div>
+              <div class="stat-lbl">Point Diagnostic</div>
+            </div>
+            <div>
+              <div class="stat-num">48hr</div>
+              <div class="stat-lbl">Fix Turnaround</div>
+            </div>
+            <div>
+              <div class="stat-num">$0</div>
+              <div class="stat-lbl">First Audit</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="audit" class="form-card">
+          <h3>Get your free audit</h3>
+          <p class="form-sub">Drop your details. Report in your inbox within 24 hours.</p>
+
+          <div class="form-success" data-fs-success>
+            <strong>✓ Got it.</strong> Audit lands in your inbox within 24 hours.<br />
+            <span class="form-success-cta">Want to talk now? Call <a href="tel:+17605551234">(760) 555-1234</a></span>
+          </div>
+          <div class="form-error" data-fs-error></div>
+
+          <form id="audit-form" action="https://formspree.io/f/xeenqpgq" method="POST">
+            <div class="form-row">
+              <label for="name">Name</label>
+              <input type="text" id="name" name="name" data-fs-field required />
+              <span class="field-error" data-fs-error="name"></span>
+            </div>
+            <div class="form-row">
+              <label for="business">Business Name</label>
+              <input type="text" id="business" name="business" data-fs-field required />
+              <span class="field-error" data-fs-error="business"></span>
+            </div>
+            <div class="form-row">
+              <label for="website">Website URL</label>
+              <input type="url" id="website" name="website" placeholder="https://" data-fs-field required />
+              <span class="field-error" data-fs-error="website"></span>
+            </div>
+            <div class="form-row">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" data-fs-field required />
+              <span class="field-error" data-fs-error="email"></span>
+            </div>
+            <div class="form-row">
+              <label for="phone">Phone (optional)</label>
+              <input type="tel" id="phone" name="phone" data-fs-field />
+              <span class="field-error" data-fs-error="phone"></span>
+            </div>
+            <button type="submit" class="btn btn-primary" data-fs-submit-btn>Send My Free Audit →</button>
+            <p class="small">No spam. No sales calls unless you ask.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LEAKS -->
+  <section>
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Common Revenue Leaks</span>
+        <h2>6 ways your website silently loses customers.</h2>
+        <p>These are the issues we find on 9 out of 10 local business sites. Each one quietly costs you money every month.</p>
+      </div>
+
+      <div class="leaks">
+        <div class="leak">
+          <div class="leak-num">// 01</div>
+          <h3>Not mobile-friendly</h3>
+          <p>Over 60% of local searches happen on phones. If your site doesn't load right on mobile, they're gone.</p>
+          <span class="leak-loss">↓ $300–800/mo lost</span>
+        </div>
+        <div class="leak">
+          <div class="leak-num">// 02</div>
+          <h3>No online booking</h3>
+          <p>Customers want to book at 10 PM. If they can't, they book with whoever lets them.</p>
+          <span class="leak-loss">↓ $400–1,200/mo lost</span>
+        </div>
+        <div class="leak">
+          <div class="leak-num">// 03</div>
+          <h3>Ignored Google reviews</h3>
+          <p>50 reviews and no responses. People read owner replies. Free marketing left on the table.</p>
+          <span class="leak-loss">↓ $200–600/mo lost</span>
+        </div>
+        <div class="leak">
+          <div class="leak-num">// 04</div>
+          <h3>No SSL certificate</h3>
+          <p>Browsers flag "Not Secure" next to your URL. Customers bounce before entering anything.</p>
+          <span class="leak-loss">↓ $150–400/mo lost</span>
+        </div>
+        <div class="leak">
+          <div class="leak-num">// 05</div>
+          <h3>No email capture</h3>
+          <p>Every visitor who leaves without giving their email is a customer you can never follow up with.</p>
+          <span class="leak-loss">↓ $300–800/mo lost</span>
+        </div>
+        <div class="leak">
+          <div class="leak-num">// 06</div>
+          <h3>Hidden contact info</h3>
+          <p>If someone has to scroll for your phone number, you've lost them. Three seconds is all you get.</p>
+          <span class="leak-loss">↓ $200–500/mo lost</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROCESS -->
+  <section>
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">How It Works</span>
+        <h2>Three steps. One week. Revenue recovered.</h2>
+      </div>
+
+      <div class="process">
+        <div class="step">
+          <div class="step-num">01</div>
+          <h3>We audit your website</h3>
+          <p>10-point diagnostic on your site, Google listing, and online presence. You get a detailed report showing exactly what costs you customers.</p>
+          <span class="step-meta">// Free — no strings</span>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <h3>You review the findings</h3>
+          <p>We walk you through every issue. Real data, real numbers. You decide if you want to fix it yourself or have us handle it.</p>
+          <span class="step-meta">// 10 minute call</span>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <h3>We fix everything</h3>
+          <p>Every issue identified — fixed within 48 hours. Mobile, CTAs, booking, SEO, review templates. All of it.</p>
+          <span class="step-meta">// $497 · 48 hour delivery</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="about">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-photo">
+          [ swap this for a photo of you<br />— builds way more trust than a logo ]
+        </div>
+        <div>
+          <span class="eyebrow">Who's behind this</span>
+          <h2 style="margin: 16px 0 24px;">Built by someone who's been on your side of the counter.</h2>
+          <p>I'm Tim — Vertex Autonomy is run out of the High Desert (Hesperia / Victorville / Apple Valley). Before AI automation, I spent 23 years as a Union Pacific locomotive engineer. Working class. Blue collar. I get it.</p>
+          <p>I started Vertex because I watched too many local owners get sold $5,000 websites by agencies that vanish, then get billed $800/mo for "SEO" that does nothing. <strong>That's not what this is.</strong></p>
+          <p>The audit is free. The fix is one flat fee. If we work together past that, it's month-to-month with no contract. You can fire me with one email.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section>
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Simple Pricing</span>
+        <h2>Fix the leaks. Keep the revenue.</h2>
+      </div>
+
+      <div class="pricing">
+        <div class="price-card featured">
+          <div class="badge">Most Popular</div>
+          <h3>Fix Package</h3>
+          <div class="price-amt">$497<span> · one-time</span></div>
+          <div class="price-meta">Done in 48 hours</div>
+          <ul>
+            <li>Full 10-point revenue leak audit</li>
+            <li>Every issue fixed within 48 hours</li>
+            <li>Mobile optimization</li>
+            <li>CTA and booking improvements</li>
+            <li>Google review response templates</li>
+            <li>SEO basics (titles, descriptions)</li>
+            <li>Email capture setup</li>
+            <li>Before/after comparison report</li>
+          </ul>
+          <a href="#audit" class="btn btn-primary">Get Started →</a>
+        </div>
+
+        <div class="price-card">
+          <h3>Monthly Monitoring</h3>
+          <div class="price-amt">$297<span> / month</span></div>
+          <div class="price-meta">Cancel anytime · No contract</div>
+          <ul>
+            <li>Everything in Fix Package first</li>
+            <li>Monthly performance check</li>
+            <li>Ongoing optimization</li>
+            <li>Google listing management</li>
+            <li>Review monitoring and alerts</li>
+            <li>Priority support via email</li>
+            <li>Monthly report with metrics</li>
+            <li>Cancel anytime, no contract</li>
+          </ul>
+          <a href="#audit" class="btn btn-ghost">Start with Audit →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="final-cta">
+    <div class="container">
+      <span class="eyebrow">Last call</span>
+      <h2>Find out what your website is costing you.</h2>
+      <p>Takes 24 hours. Costs nothing. You keep the report either way.</p>
+      <a href="#audit" class="btn btn-primary">Request Free Audit →</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="logo" style="font-size: 1.1rem;">VERTEX<span style="color:var(--accent)">//</span>AUTONOMY</a>
+        <p style="margin-top: 14px; max-width: 380px; font-size: 0.95rem;">Local business revenue recovery. Based in Southern California's High Desert. Serving the Victor Valley and Inland Empire.</p>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <a href="tel:+17605551234">(760) 555-1234</a>
+        <a href="mailto:vertexautonomy@gmail.com">vertexautonomy@gmail.com</a>
+      </div>
+      <div>
+        <h4>Service Area</h4>
+        <a>Hesperia · Victorville</a>
+        <a>Apple Valley · Adelanto</a>
+        <a>Inland Empire</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>© 2026 Vertex Autonomy LLC — Wyoming</div>
+      <div>vertexautonomy.io</div>
+    </div>
+  </div>
+</footer>
+
+<!-- Formspree AJAX integration -->
+<script>
+  window.formspree = window.formspree || function () { (formspree.q = formspree.q || []).push(arguments); };
+  formspree('initForm', { formElement: '#audit-form', formId: 'xeenqpgq' });
+</script>
+<script src="https://unpkg.com/@formspree/ajax@1" defer></script>
+
+</body>
+</html>
